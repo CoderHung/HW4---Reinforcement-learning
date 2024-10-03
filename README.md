@@ -17,8 +17,7 @@ Running the Project
    Run the following command to train the agents:
    python train_agents.py
 
-2. Start the Tic Tac Toe Game  
-   Launch the Tic Tac Toe game with:
+2. Plot the resulting winrate
    python TicTacToe.py
 
 Visual Representation
