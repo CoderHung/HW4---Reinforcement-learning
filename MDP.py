@@ -1,120 +1,118 @@
 import numpy as np
-from tqdm import tqdm
-import json
 
 class MDP:
-    def __init__(self):
+    def __init__(self, N):
+        self.N = N  # NxN board size
         self.states = set()
         self.T_states = set()
         self.actions = {}
 
-
     def generate_states(self):
         """
-        This method generates all possible states of the game
+        Generates all possible states of the game for an NxN board.
         """
-
-        # define a fucntion to generate all states
         def _brute_states():
             """
-            This function generates all possible and impossible states of the game
+            Generates all possible states for the board.
             """
-            # 0 : no move
-            # 1 : X
-            # 2 : O
+            # 0: no move, 1: X, 2: O
             all_board_config = set()
-            for values in np.ndindex(3, 3, 3, 3, 3, 3, 3, 3, 3):
+            for values in np.ndindex(*([3] * (self.N ** 2))):
                 state = tuple(values)
                 all_board_config.add(state)
             return all_board_config
-        # define a function to check if there are 2 winners at the same time
+
         def _check_2_win(state):
             """
-            This function checks if there are 2 winners at the same time
+            Checks if there are two winners at the same time.
             """
             count_h, count_v = 0, 0
-            for i in range(3):
-                if (state[i*3] == state[i*3+1] == state[i*3+2] and state[i*3] == 1) or (state[i*3] == state[i*3+1] == state[i*3+2] and state[i*3] == 2):
+            for i in range(self.N):
+                # Check rows for winner
+                if len(set(state[i*self.N:(i+1)*self.N])) == 1 and state[i*self.N] in {1, 2}:
                     count_h += 1
-                if (state[i] == state[3+i] == state[6+i] and state[i] == 1) or (state[i] == state[3+i] == state[6+i] and state[i] == 2):
+                # Check columns for winner
+                if len(set(state[i::self.N])) == 1 and state[i] in {1, 2}:
                     count_v += 1
             if count_h == 2 or count_v == 2:
                 return True
             return False
-    
-        # initialize states with possible and impossible states
+
         self.states = _brute_states()
         
-        # remove states that are not possible
+        # Filter out invalid states
         for state in self.states.copy():
-            # we suppose that computer is always X, thus if there are more X than O, remove the state
             if state.count(1) > state.count(2):
                 self.states.remove(state)
-            # if there is a difference between the number of Os and Xs which is superioe to 2, remove the state
             elif abs(state.count(1) - state.count(2)) > 1:
                 self.states.remove(state)
-            # if there are 2 winners at the same time, remove the state
             elif _check_2_win(state):
                 self.states.remove(state)
-   
+
     def termination_states(self):
         """
-        This function takes all possible states and updates the states where the game is over wether it is a win, a draw or a loss
+        Updates terminal states where the game is over (win, draw, loss).
         """
         for state in self.states:
             if self.win(state):
                 self.T_states.add(state)
-            elif state.count(0) == 0:
+            elif state.count(0) == 0:  # All spots are filled, it's a draw
                 self.T_states.add(state)
 
     def generate_actions(self):
         """
-        This function takes all possible states and update the possible actions for each state
+        Updates the possible actions for each state.
         """
         for state in self.states:
             self.actions[state] = None
             if state not in self.T_states:
                 self.actions[state] = []
-                for i in range(9):
+                for i in range(self.N ** 2):
                     if state[i] == 0:
                         self.actions[state].append(i)
-   
+
     def transition_function(self, state):
         """
-        This function takes a state and returns the probability of each possible next state
+        Returns the probability of each possible next state.
         """
-        # if the game is over, return 0
         if state in self.T_states:
             return 0
-        # if the game is not over, return 1/number of possible actions for O
         else:
-            return 1/(len(self.actions[state])-1)
-    
-    def reward_function(self,state):
-        """
-        This function takes a state and returns the reward of the state
-        """
+            return 1 / (len(self.actions[state]) - 1)
 
+    def reward_function(self, state):
+        """
+        Returns the reward for the given state.
+        """
         if self.win(state) == 1:
             return 1
         if self.win(state) == 2:
             return -1
         return 0
-            
+
     def win(self, state):
-        for i in range(3):
-            if state[i*3] == state[i*3+1] == state[i*3+2] and state[i*3] != 0:
-                return state[i*3]
-            if state[i] == state[3+i] == state[6+i] and state[i] != 0:
+        """
+        Checks if a player has won the game.
+        """
+        # Check rows and columns
+        for i in range(self.N):
+            # Check rows
+            if len(set(state[i*self.N:(i+1)*self.N])) == 1 and state[i*self.N] != 0:
+                return state[i*self.N]
+            # Check columns
+            if len(set(state[i::self.N])) == 1 and state[i] != 0:
                 return state[i]
-        if state[4] == state[6] == state[2] and state[4] != 0:
-            return state[4]
-        elif state[0] == state[4] == state[8] and state[0] != 0:
+        # Check diagonals
+        if len(set([state[i*(self.N+1)] for i in range(self.N)])) == 1 and state[0] != 0:
             return state[0]
-        else:
-            return False
-    
+        if len(set([state[(i+1)*(self.N-1)] for i in range(self.N)])) == 1 and state[self.N-1] != 0:
+            return state[self.N-1]
+        return False
+
     def possible_next_states(self, state, action):
+        """
+        Returns the possible next states given a current state and action.
+        """
         new_state = list(state)
         new_state[action] = 1
         if self.win(new_state):
@@ -125,7 +123,4 @@ class MDP:
             if case == 0:
                 next_new_state[i] = 2
                 possible_next_states.append(tuple(next_new_state))
-        
         return possible_next_states
-    
-   
