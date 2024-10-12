@@ -1,11 +1,11 @@
 from MDP import MDP
 from tqdm import tqdm
 import numpy as np
-
+n = 4
 class ValueIteration(MDP):
 
     def __init__(self, gamma=0.95, epsilon=10e-10):
-        super().__init__()
+        super().__init__(n)
         self.gamma = gamma
         self.epsilon = epsilon
         self.policy = {}
